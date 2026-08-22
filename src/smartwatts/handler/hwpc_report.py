@@ -145,11 +145,12 @@ class HwPCReportHandler(Handler):
             return power_reports, formula_reports
 
         # compute per-target power report
+        model_error_ratio = max(rapl_power - self.state.config.cpu_topology.idle_consumption, 0.0) / max(raw_global_power, float('1e-30'))
         for target_name, target_report in hwpc_reports.items():
             target_core = self._gen_core_events_group(target_report)
             raw_target_power = layer.model.predict_power_consumption(self._extract_events_value(target_core))
             target_power, target_ratio = layer.model.cap_power_estimation(raw_target_power, raw_global_power)
-            target_power = target_power * (max(rapl_power - self.state.config.cpu_topology.idle_consumption, 0.0) / max(raw_global_power, float('1e-30')))
+            target_power = target_power * model_error_ratio
             power_reports.append(self._gen_power_report(timestamp, target_name, layer.model.hash, target_power, target_ratio, target_report.metadata))
 
         # compute power model error from reference
