@@ -80,6 +80,10 @@ def generate_smartwatts_parser() -> CommonCLIParsingManager:
     # Sensor information
     pm.add_argument('sensor-reports-frequency', help_text='The frequency with which measurements are made (in milliseconds)', argument_type=int, default_value=1000)
 
+    # Latency parameters
+    pm.add_argument('ticks-buffer-size', help_text='Number of newer ticks to wait for before processing a tick (reports of a tick may arrive late)', argument_type=int, default_value=5)
+    pm.add_argument('pusher-buffer-size', help_text='Maximum number of reports buffered by the pushers before writing them (0: write each report instantly)', argument_type=int, default_value=50)
+
     # Learning parameters
     pm.add_argument('learn-min-samples-required', help_text='Minimum amount of samples required before trying to learn a power model', argument_type=int, default_value=10)
     pm.add_argument('learn-history-window-size', help_text='Size of the history window used to keep samples to learn from', argument_type=int, default_value=60)
@@ -101,7 +105,8 @@ def generate_formula_configuration(config: dict, cpu_topology: CPUTopology, scop
     real_time_mode = config['stream']
     error_window_size = config['learn-error-window-size']
     error_window_method = config['learn-error-window-method']
-    return SmartWattsFormulaConfig(scope, reports_freq, rapl_event, error_threshold, cpu_topology, min_samples, history_window_size, real_time_mode, error_window_size, error_window_method)
+    ticks_buffer_size = config['ticks-buffer-size']
+    return SmartWattsFormulaConfig(scope, reports_freq, rapl_event, error_threshold, cpu_topology, min_samples, history_window_size, real_time_mode, error_window_size, error_window_method, ticks_buffer_size)
 
 
 def setup_cpu_formula_dispatcher(config, route_table, report_filter, cpu_topology, pushers) -> DispatcherActor:
@@ -154,6 +159,10 @@ def run_smartwatts(config) -> None:
     pullers = PullerGenerator(report_filter).generate(config)
 
     pushers = PusherGenerator().generate(config)
+    # The pusher writes its buffer when it holds more than max_size reports (or 100 ms after the last write)
+    # With 0, each report is written as soon as it is computed
+    for pusher in pushers.values():
+        pusher.max_size = config['pusher-buffer-size']
 
     dispatchers = {}
 

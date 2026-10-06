@@ -65,5 +65,11 @@ class SmartWattsConfigValidator(ConfigValidator):
         if config['learn-error-window-size'] < 0:
             raise InvalidConfigurationParameterException('Error history window size must be positive')
 
+        if config['ticks-buffer-size'] < 1:
+            raise InvalidConfigurationParameterException('Ticks buffer size must be at least 1')
+
+        if config['pusher-buffer-size'] < 0:
+            raise InvalidConfigurationParameterException('Pusher buffer size must be positive')
+
         if config['learn-error-window-method'] not in ['mean', 'median']:
             raise InvalidConfigurationParameterException('Error window method is not supported')

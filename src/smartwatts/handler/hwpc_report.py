@@ -87,9 +87,10 @@ class HwPCReportHandler(Handler):
         logging.debug('received message: %s', msg)
         self.ticks.setdefault(msg.timestamp, {}).update({msg.target: msg})
 
-        # Start to process the oldest tick only after receiving at least 5 ticks.
+        # Start to process the oldest tick only after receiving at least 'ticks_buffer_size' ticks (5 by default).
         # We wait before processing the ticks in order to mitigate the possible delay between the sensor/database.
-        if len(self.ticks) > 5:
+        # With 1, a tick is processed as soon as the first report of the next tick arrives.
+        if len(self.ticks) > self.state.config.ticks_buffer_size:
             power_reports, formula_reports = self._process_oldest_tick()
             for report in itertools.chain(power_reports, formula_reports):
                 for name, pusher in self.state.pushers.items():
